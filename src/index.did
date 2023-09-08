@@ -1,0 +1,54 @@
+type Leave = record {
+  id : text;
+  status : text;
+  endDate : text;
+  userId : text;
+  days : float64;
+  createdAt : nat64;
+  updatedAt : opt nat64;
+  startDate : text;
+};
+type LeavePayload = record { endDate : text; startDate : text };
+type Member = record {
+  id : text;
+  name : text;
+  createdAt : nat64;
+  email : text;
+  updatedAt : opt nat64;
+  availableDays : float64;
+};
+type MemberPayload = record {
+  name : text;
+  email : text;
+  availableDays : float64;
+};
+type Organization = record {
+  id : text;
+  members : vec text;
+  name : text;
+  createdAt : nat64;
+  updatedAt : opt nat64;
+};
+type OrganizationPayload = record { name : text };
+type _AzleResult = variant { Ok : Member; Err : text };
+type _AzleResult_1 = variant { Ok : Organization; Err : text };
+type _AzleResult_2 = variant { Ok : vec Member; Err : text };
+type _AzleResult_3 = variant { Ok : vec Organization; Err : text };
+type _AzleResult_4 = variant { Ok : Leave; Err : text };
+service : () -> {
+  addMember : (MemberPayload) -> (_AzleResult);
+  createOrganization : (OrganizationPayload) -> (_AzleResult_1);
+  deleteMember : (text) -> (_AzleResult);
+  deleteOrganization : (text) -> (_AzleResult_1);
+  getMember : (text) -> (_AzleResult) query;
+  getMembers : () -> (_AzleResult_2) query;
+  getOrganization : (text) -> (_AzleResult_1) query;
+  getOrganizations : () -> (_AzleResult_3) query;
+  login : (text) -> (_AzleResult) query;
+  register : (MemberPayload) -> (_AzleResult);
+  requestLeave : (text, LeavePayload) -> (_AzleResult_4);
+  updateLeave : (text, LeavePayload) -> (_AzleResult_4);
+  updateLeaveStatus : (text, text) -> (_AzleResult_4);
+  updateMember : (text, MemberPayload) -> (_AzleResult);
+  updateOrganization : (text, OrganizationPayload) -> (_AzleResult_1);
+}

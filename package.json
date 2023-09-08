@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "name": "ooo-icp-canister",
-  "description": "OOO - Advanced leave system for companies",
+  "description": "OOO - Leave system for companies",
   "author": "Byurhan Nurula",
   "license": "MIT",
   "scripts": {
