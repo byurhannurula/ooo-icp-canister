@@ -281,7 +281,7 @@ export function updateLeave(
   payload: LeavePayload,
 ): Result<Leave, string> {
   if (!isValidUUID(id)) {
-    return Result.Err<Leave, string>("Please enter valid Leave ID!");
+    return Result.Err("Please enter valid Leave ID!");
   }
 
   return match(leaveStorage.get(id), {
@@ -306,6 +306,21 @@ export function updateLeave(
     None: () =>
       Result.Err<Leave, string>(
         `Could not update leave with the given id=${id}. Leave not found!`,
+      ),
+  });
+}
+
+$update;
+export function deleteLeave(id: string): Result<Leave, string> {
+  if (!isValidUUID(id)) {
+    return Result.Err("Please enter valid Leave ID!");
+  }
+
+  return match(leaveStorage.remove(id), {
+    Some: (deletedLeave) => Result.Ok<Leave, string>(deletedLeave),
+    None: () =>
+      Result.Err<Leave, string>(
+        `Could not delete a LEave with the given id=${id}. Leave not found!`,
       ),
   });
 }
