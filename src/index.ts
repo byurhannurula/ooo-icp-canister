@@ -200,7 +200,7 @@ export function requestLeave(
   payload: LeavePayload,
 ): Result<Leave, string> {
   if (!isValidUUID(userId)) {
-    return Result.Err<Leave, string>("Please enter valid User ID!");
+    return Result.Err("Please enter valid User ID!");
   }
 
   const user = getUser(userId);
@@ -219,9 +219,13 @@ export function requestLeave(
 
   const diffDays = findDiffInDays(payload.startDate, payload.endDate);
 
+  if (diffDays === 0) {
+    return Result.Err("Leave should be atleast one day!");
+  }
+
   // Check if user has enough available days left
   if (user.Ok.availableDays < diffDays) {
-    return Result.Err<Leave, string>("Leave should be atleast one day!");
+    return Result.Err("You are exceeding your available days for leave!");
   }
 
   // Check if requested leave period is in this year
@@ -231,13 +235,7 @@ export function requestLeave(
     startDateObject.getFullYear() < currentYear ||
     endDateObject.getFullYear() < currentYear
   ) {
-    return Result.Err<Leave, string>(
-      "Leave period should be in the current calendar year!",
-    );
-  }
-
-  if (startDateObject.getDate() < endDateObject.getDate()) {
-    return Result.Err<Leave, string>("Leave should be atleast one day!");
+    return Result.Err("Leave period should be in the current calendar year!");
   }
 
   const leaves = leaveStorage
@@ -253,7 +251,7 @@ export function requestLeave(
           endDate <= currentLeave.endDate) ||
         (currentLeave.startDate >= startDate && endDate >= currentLeave.endDate)
       ) {
-        return Result.Err<Leave, string>(
+        return Result.Err(
           "The chosen leave period overlaps with an existing leave!",
         );
       }
@@ -333,6 +331,8 @@ export function updateLeaveStatus(
 
       if (status === LeaveStatuses.REJECTED) {
         updateUsersAvailableDays(leave.userId, leave.days, "ADD");
+      } else {
+        updateUsersAvailableDays(leave.userId, leave.days, "SUBTRACT");
       }
 
       return Result.Ok<Leave, string>(updatedLeave);
@@ -352,13 +352,13 @@ function updateUsersAvailableDays(
   operation: "ADD" | "SUBTRACT",
 ): Result<User, string> {
   if (!isValidUUID(userId)) {
-    return Result.Err<User, string>("Please enter valid User ID!");
+    return Result.Err("Please enter valid User ID!");
   }
 
   const user = getUser(userId);
 
   if (!user || !user.Ok || !user.Ok.availableDays) {
-    return Result.Err<User, string>(
+    return Result.Err(
       `Could not update status of the leave with the given id=${userId}. Something went wrong!`,
     );
   }
@@ -377,9 +377,10 @@ function updateUsersAvailableDays(
 }
 
 function findDiffInDays(startDate: number, endDate: number): number {
-  const diffTime = new Date(endDate).getDate() - new Date(startDate).getDate();
+  const oneDay = 24 * 60 * 60 * 1000; // hours * minutes * seconds * milliseconds
+  const diffDays = Math.round(Math.abs((endDate - startDate) / oneDay));
 
-  return diffTime === 0 ? 1 : diffTime;
+  return diffDays === 0 ? 1 : diffDays;
 }
 
 // a workaround to make uuid package work with Azle
