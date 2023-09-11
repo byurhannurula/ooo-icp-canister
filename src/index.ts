@@ -1,5 +1,4 @@
 import {
-  $init,
   $query,
   $update,
   Record,
@@ -21,9 +20,7 @@ const LeaveStatuses = {
   REJECTED: "REJECTED",
 };
 
-const adminPrincipal: string = "2vxsx-fae";
-
-type Member = Record<{
+type User = Record<{
   id: string;
   name: string;
   email: string;
@@ -32,29 +29,17 @@ type Member = Record<{
   updatedAt: Opt<nat64>;
 }>;
 
-type MemberPayload = Record<{
+type UserPayload = Record<{
   name: string;
   email: string;
   availableDays?: number;
 }>;
 
-type Organization = Record<{
-  id: string;
-  name: string;
-  members: Vec<string>;
-  createdAt: nat64;
-  updatedAt: Opt<nat64>;
-}>;
-
-type OrganizationPayload = Record<{
-  name: string;
-}>;
-
 type Leave = Record<{
   id: string;
   userId: string;
-  startDate: string;
-  endDate: string;
+  startDate: number;
+  endDate: number;
   days: number;
   status: string;
   createdAt: nat64;
@@ -62,217 +47,152 @@ type Leave = Record<{
 }>;
 
 type LeavePayload = Record<{
-  startDate: string;
-  endDate: string;
+  startDate: number;
+  endDate: number;
 }>;
 
 const leaveStorage = new StableBTreeMap<string, Leave>(0, 44, 1024);
-const userStorage = new StableBTreeMap<string, Member>(1, 44, 1024);
-const orgStorage = new StableBTreeMap<string, Organization>(2, 44, 1024);
-
-let currentUser: any = {};
-let currentOrg: any = {};
-
-// ========================== ORG MANAGEMENT ===================================
-
-$query;
-export function getOrganization(id: string): Result<Organization, string> {
-  if (!isValidUUID(id)) {
-    return Result.Err<Organization, string>(
-      "Please enter valid Organization ID!",
-    );
-  }
-
-  return match(orgStorage.get(id), {
-    Some: (data) => Result.Ok<Organization, string>(data),
-    None: () =>
-      Result.Err<Organization, string>(
-        `Organization with given id=${id} not found!`,
-      ),
-  });
-}
-
-$query;
-export function getOrganizations(): Result<Vec<Organization>, string> {
-  return Result.Ok<Vec<Organization>, string>(orgStorage.values());
-}
-
-$update;
-export function createOrganization(
-  payload: OrganizationPayload,
-): Result<Organization, string> {
-  const orgs = orgStorage.values();
-
-  const isOrgExists = orgs.find((org) => org.name === payload.name);
-
-  if (isOrgExists) {
-    return Result.Err<Organization, string>(
-      "Organization with given name exists already!",
-    );
-  }
-
-  const org: Organization = {
-    id: uuidv4(),
-    createdAt: ic.time(),
-    updatedAt: Opt.None,
-    members: [currentUser.id],
-    ...payload,
-  };
-
-  orgStorage.insert(org.id, org);
-
-  return Result.Ok<Organization, string>(org);
-}
-
-$update;
-export function updateOrganization(
-  id: string,
-  payload: OrganizationPayload,
-): Result<Organization, string> {
-  if (!isValidUUID(id)) {
-    return Result.Err<Organization, string>(
-      "Please enter valid Organization ID!",
-    );
-  }
-
-  if (!isOrganizationAdmin()) {
-    return Result.Err<Organization, string>(
-      "You don't have access to update this organization!",
-    );
-  }
-
-  return match(orgStorage.get(id), {
-    Some: (org: Organization) => {
-      const updatedOrg: Organization = {
-        ...org,
-        ...payload,
-        updatedAt: Opt.Some(ic.time()),
-      };
-
-      orgStorage.insert(org.id, updatedOrg);
-
-      return Result.Ok<Organization, string>(updatedOrg);
-    },
-    None: () =>
-      Result.Err<Organization, string>(
-        `Could not update an Organization with the given id=${id}. Organization not found!`,
-      ),
-  });
-}
-
-$update;
-export function deleteOrganization(id: string): Result<Organization, string> {
-  if (!isValidUUID(id)) {
-    return Result.Err<Organization, string>(
-      "Please enter valid Organization ID!",
-    );
-  }
-
-  if (!isOrganizationAdmin()) {
-    return Result.Err<Organization, string>(
-      "You don't have access to delete this organization!",
-    );
-  }
-
-  return match(orgStorage.remove(id), {
-    Some: (deletedOrg) => Result.Ok<Organization, string>(deletedOrg),
-    None: () =>
-      Result.Err<Organization, string>(
-        `Could not delete a Organization with the given id=${id}. Organization not found!`,
-      ),
-  });
-}
+const userStorage = new StableBTreeMap<string, User>(1, 44, 1024);
 
 // ========================= USER MANAGEMENT ===================================
 
 $query;
-export function getMember(id: string): Result<Member, string> {
+export function getUser(id: string): Result<User, string> {
   if (!isValidUUID(id)) {
-    return Result.Err<Member, string>("Please enter valid Member ID!");
+    return Result.Err<User, string>("Please enter valid User ID!");
   }
 
   return match(userStorage.get(id), {
-    Some: (userData) => Result.Ok<Member, string>(userData),
-    None: () =>
-      Result.Err<Member, string>(`Member with given id=${id} not found!`),
+    Some: (userData) => Result.Ok<User, string>(userData),
+    None: () => Result.Err<User, string>(`User with given id=${id} not found!`),
   });
 }
 
 $query;
-export function getMembers(): Result<Vec<Member>, string> {
-  return Result.Ok<Vec<Member>, string>(userStorage.values());
+export function getUsers(): Result<Vec<User>, string> {
+  return Result.Ok<Vec<User>, string>(userStorage.values());
 }
 
 $update;
-export function addMember(payload: MemberPayload): Result<Member, string> {
-  const users = userStorage.values();
-
-  const isMemberExists = users.find((user) => user.email === payload.email);
-
-  if (isMemberExists) {
-    return Result.Err<Member, string>(
-      "Member with given email address exists already!",
+export function addUser(payload: UserPayload): Result<User, string> {
+  if (!payload.name || !payload.email) {
+    return Result.Err(
+      "Name and Email data are required! Please enter valid data.",
     );
   }
 
-  const user: Member = {
+  const users = userStorage.values();
+  const isUserExists = users.find((user) => user.email === payload.email);
+
+  if (isUserExists) {
+    return Result.Err<User, string>(
+      "User with given email address exists already!",
+    );
+  }
+
+  if (
+    !payload.availableDays ||
+    (payload.availableDays && typeof payload.availableDays !== "number")
+  ) {
+    payload.availableDays = DEFAULT_AVAILABLE_DAYS;
+  }
+
+  const user: User = {
     id: uuidv4(),
     createdAt: ic.time(),
     updatedAt: Opt.None,
-    availableDays: DEFAULT_AVAILABLE_DAYS,
     ...payload,
+    availableDays: payload.availableDays ?? DEFAULT_AVAILABLE_DAYS,
   };
 
   userStorage.insert(user.id, user);
 
-  orgStorage.get(currentOrg.id);
-  return Result.Ok<Member, string>(user);
+  return Result.Ok<User, string>(user);
 }
 
 $update;
-export function updateMember(
+export function updateUser(
   id: string,
-  payload: MemberPayload,
-): Result<Member, string> {
+  payload: UserPayload,
+): Result<User, string> {
   if (!isValidUUID(id)) {
-    return Result.Err<Member, string>("Please enter valid Member ID!");
+    return Result.Err<User, string>("Please enter valid User ID!");
+  }
+
+  if (!payload.name || !payload.email) {
+    return Result.Err(
+      "Name and Email cannot be empty! Please enter valid data.",
+    );
   }
 
   return match(userStorage.get(id), {
     Some: (user) => {
-      const updatedMember: Member = {
+      const updatedUser: User = {
         ...user,
         ...payload,
         updatedAt: Opt.Some(ic.time()),
       };
 
-      userStorage.insert(user.id, updatedMember);
+      userStorage.insert(user.id, updatedUser);
 
-      return Result.Ok<Member, string>(updatedMember);
+      return Result.Ok<User, string>(updatedUser);
     },
     None: () =>
-      Result.Err<Member, string>(
-        `Could not update a user with the given id=${id}. Member not found!`,
+      Result.Err<User, string>(
+        `Could not update a user with the given id=${id}. User not found!`,
       ),
   });
 }
 
 $update;
-export function deleteMember(id: string): Result<Member, string> {
+export function deleteUser(id: string): Result<User, string> {
   if (!isValidUUID(id)) {
-    return Result.Err<Member, string>("Please enter valid Member ID!");
+    return Result.Err<User, string>("Please enter valid User ID!");
   }
 
   return match(userStorage.remove(id), {
-    Some: (deletedMember) => Result.Ok<Member, string>(deletedMember),
+    Some: (deletedUser) => Result.Ok<User, string>(deletedUser),
     None: () =>
-      Result.Err<Member, string>(
-        `Could not delete a Member with the given id=${id}. Member not found!`,
+      Result.Err<User, string>(
+        `Could not delete a User with the given id=${id}. User not found!`,
       ),
   });
 }
 
 // ========================= LEAVE MANAGEMENT ==================================
+
+$query;
+export function getLeaveRequests(): Result<Vec<Leave>, string> {
+  return Result.Ok<Vec<Leave>, string>(leaveStorage.values());
+}
+
+$query;
+export function getUsersLeaveRequests(
+  userId: string,
+): Result<Vec<Leave>, string> {
+  if (!isValidUUID(userId)) {
+    return Result.Err("Please enter valid User ID!");
+  }
+
+  return Result.Ok(
+    leaveStorage.values().filter(({ userId }) => userId === userId),
+  );
+}
+
+$query;
+export function getLeaveRequestsByStatus(
+  status: string,
+): Result<Vec<Leave>, string> {
+  if (!status || (status && !Object.values(LeaveStatuses).includes(status))) {
+    return Result.Err(
+      "Please enter valid Status! Statuses are - PENDING, APPROVED and REJECTED",
+    );
+  }
+
+  return Result.Ok(
+    leaveStorage.values().filter(({ userId }) => userId === userId),
+  );
+}
 
 $update;
 export function requestLeave(
@@ -280,14 +200,14 @@ export function requestLeave(
   payload: LeavePayload,
 ): Result<Leave, string> {
   if (!isValidUUID(userId)) {
-    return Result.Err<Leave, string>("Please enter valid Member ID!");
+    return Result.Err<Leave, string>("Please enter valid User ID!");
   }
 
-  const user = getMember(userId);
+  const user = getUser(userId);
 
   if (!user.Ok || user.Err) {
     return Result.Err<Leave, string>(
-      "Could not find the Member with the given ID!",
+      "Could not find the User with the given ID!",
     );
   }
 
@@ -298,10 +218,6 @@ export function requestLeave(
   const endDateObject = new Date(endDate);
 
   const diffDays = findDiffInDays(payload.startDate, payload.endDate);
-
-  if (diffDays <= 0) {
-    return Result.Err<Leave, string>("Leave should be atleast one day!");
-  }
 
   // Check if user has enough available days left
   if (user.Ok.availableDays < diffDays) {
@@ -320,17 +236,16 @@ export function requestLeave(
     );
   }
 
-  if (timestampToDate(startDate) < timestampToDate(endDate)) {
+  if (startDateObject.getDate() < endDateObject.getDate()) {
     return Result.Err<Leave, string>("Leave should be atleast one day!");
   }
 
-  const leaves = leaveStorage.values();
-  const currentMembersLeaves = leaves.filter(
-    (leave) => leave.userId === userId,
-  );
+  const leaves = leaveStorage
+    .values()
+    .filter((leave) => leave.userId === userId);
 
-  if (currentMembersLeaves.length) {
-    currentMembersLeaves.forEach((currentLeave) => {
+  if (leaves.length) {
+    leaves.forEach((currentLeave) => {
       if (
         (currentLeave.startDate <= startDate &&
           startDate <= currentLeave.endDate) ||
@@ -350,16 +265,16 @@ export function requestLeave(
     userId,
     createdAt: ic.time(),
     updatedAt: Opt.None,
-    status: LeaveStatuses.APPROVED,
+    status: LeaveStatuses.PENDING,
     days: diffDays,
     ...payload,
   };
 
   leaveStorage.insert(leave.id, leave);
 
-  updateMembersAvailableDays(leave.userId, leave.days, "SUBTRACT");
+  updateUsersAvailableDays(leave.userId, leave.days, "SUBTRACT");
 
-  return Result.Ok<Leave, string>(leave);
+  return Result.Ok(leave);
 }
 
 $update;
@@ -417,7 +332,7 @@ export function updateLeaveStatus(
       leaveStorage.insert(leave.id, updatedLeave);
 
       if (status === LeaveStatuses.REJECTED) {
-        updateMembersAvailableDays(leave.userId, leave.days, "ADD");
+        updateUsersAvailableDays(leave.userId, leave.days, "ADD");
       }
 
       return Result.Ok<Leave, string>(updatedLeave);
@@ -429,66 +344,21 @@ export function updateLeaveStatus(
   });
 }
 
-// ========================= AUTH MANAGEMENT ===================================
-
-$query;
-export function login(email: string): Result<Member, string> {
-  const user = userStorage.values().find((user) => user.email === email);
-
-  if (user) {
-    currentUser = { ...user };
-
-    const org = orgStorage.values().find((x) => x.members.includes(user?.id));
-    currentOrg = { ...org };
-
-    return Result.Ok<Member, string>(user);
-  } else {
-    return Result.Err<Member, string>(
-      `Could not find user with given email. Please try again!`,
-    );
-  }
-}
-
-$update;
-export function register(payload: MemberPayload): Result<Member, string> {
-  const users = userStorage.values();
-
-  const isMemberExists = users.find((user) => user.email === payload.email);
-
-  if (isMemberExists) {
-    return Result.Err<Member, string>(
-      "User with given email address exists already!",
-    );
-  }
-
-  const user: Member = {
-    id: uuidv4(),
-    createdAt: ic.time(),
-    updatedAt: Opt.None,
-    availableDays: DEFAULT_AVAILABLE_DAYS,
-    ...payload,
-  };
-
-  userStorage.insert(user.id, user);
-
-  return Result.Ok<Member, string>(user);
-}
-
 // ============================= HELPERS =======================================
 
-function updateMembersAvailableDays(
+function updateUsersAvailableDays(
   userId: string,
   leaveDays: number,
   operation: "ADD" | "SUBTRACT",
-): Result<Member, string> {
+): Result<User, string> {
   if (!isValidUUID(userId)) {
-    return Result.Err<Member, string>("Please enter valid Member ID!");
+    return Result.Err<User, string>("Please enter valid User ID!");
   }
 
-  const user = getMember(userId);
+  const user = getUser(userId);
 
   if (!user || !user.Ok || !user.Ok.availableDays) {
-    return Result.Err<Member, string>(
+    return Result.Err<User, string>(
       `Could not update status of the leave with the given id=${userId}. Something went wrong!`,
     );
   }
@@ -500,28 +370,16 @@ function updateMembersAvailableDays(
     availableDays = user.Ok?.availableDays - leaveDays;
   }
 
-  return updateMember(userId, {
+  return updateUser(userId, {
     ...user.Ok,
     availableDays: availableDays,
   });
 }
 
-function findDiffInDays(startDate: string, endDate: string): number {
+function findDiffInDays(startDate: number, endDate: number): number {
   const diffTime = new Date(endDate).getDate() - new Date(startDate).getDate();
 
-  return diffTime;
-}
-
-function timestampToDate(value: string | number): string {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-  });
-}
-
-function isOrganizationAdmin(): boolean {
-  return ic.caller().toString() !== adminPrincipal;
+  return diffTime === 0 ? 1 : diffTime;
 }
 
 // a workaround to make uuid package work with Azle
