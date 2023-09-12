@@ -190,8 +190,8 @@ export function getLeaveRequestsByStatus(
   }
 
   return Result.Ok(
-    leaveStorage.values().filter(({ userId }) => userId === userId),
-  );
+    leaveStorage.values().filter((leave) => leave.status === status),
+  );  
 }
 
 $update;
@@ -212,6 +212,10 @@ export function requestLeave(
   }
 
   const { startDate, endDate } = payload;
+
+  if (startDate >= endDate) {
+    return Result.Err("Start date must be before end date!");
+  }
 
   const currentYear = new Date().getFullYear();
   const startDateObject = new Date(startDate);
@@ -320,7 +324,7 @@ export function deleteLeave(id: string): Result<Leave, string> {
     Some: (deletedLeave) => Result.Ok<Leave, string>(deletedLeave),
     None: () =>
       Result.Err<Leave, string>(
-        `Could not delete a LEave with the given id=${id}. Leave not found!`,
+        `Could not delete a Leave with the given id=${id}. Leave not found!`,
       ),
   });
 }
