@@ -242,6 +242,10 @@ export function requestLeave(payload: LeavePayload): Result<Leave, string> {
 
   const { startDate, endDate } = payload;
 
+  if (startDate >= endDate) {
+    return Result.Err("Start date must be before end date!");
+  }
+
   const currentYear = new Date().getFullYear();
   const startDateObject = new Date(startDate);
   const endDateObject = new Date(endDate);
@@ -383,7 +387,7 @@ export function deleteLeave(id: string): Result<Leave, string> {
     },
     None: () =>
       Result.Err<Leave, string>(
-        `Could not delete a Laave with the given id=${id}. Leave not found!`,
+        `Could not delete a Leave with the given id=${id}. Leave not found!`,
       ),
   });
 }
