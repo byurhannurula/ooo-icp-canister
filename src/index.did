@@ -1,41 +1,44 @@
+type CreateOrEditUserPayload = record { name : text; email : text };
 type Leave = record {
   id : text;
   status : text;
   endDate : float64;
-  userId : text;
+  userId : principal;
   days : float64;
   createdAt : nat64;
   updatedAt : opt nat64;
   startDate : float64;
 };
 type LeavePayload = record { endDate : float64; startDate : float64 };
+type PromoteUserPayload = record {
+  id : principal;
+  isActive : bool;
+  isAdmin : bool;
+};
 type User = record {
-  id : text;
+  id : principal;
   name : text;
   createdAt : nat64;
+  isActive : bool;
   email : text;
   updatedAt : opt nat64;
   availableDays : float64;
-};
-type UserPayload = record {
-  name : text;
-  email : text;
-  availableDays : float64;
+  isAdmin : bool;
 };
 type _AzleResult = variant { Ok : User; Err : text };
-type _AzleResult_1 = variant { Ok : vec Leave; Err : text };
-type _AzleResult_2 = variant { Ok : vec User; Err : text };
-type _AzleResult_3 = variant { Ok : Leave; Err : text };
+type _AzleResult_1 = variant { Ok : Leave; Err : text };
+type _AzleResult_2 = variant { Ok : vec Leave; Err : text };
+type _AzleResult_3 = variant { Ok : vec User; Err : text };
 service : () -> {
-  addUser : (UserPayload) -> (_AzleResult);
-  deleteUser : (text) -> (_AzleResult);
-  getLeaveRequests : () -> (_AzleResult_1) query;
-  getLeaveRequestsByStatus : (text) -> (_AzleResult_1) query;
-  getUser : (text) -> (_AzleResult) query;
-  getUsers : () -> (_AzleResult_2) query;
-  getUsersLeaveRequests : (text) -> (_AzleResult_1) query;
-  requestLeave : (text, LeavePayload) -> (_AzleResult_3);
-  updateLeave : (text, LeavePayload) -> (_AzleResult_3);
-  updateLeaveStatus : (text, text) -> (_AzleResult_3);
-  updateUser : (text, UserPayload) -> (_AzleResult);
+  createUser : (CreateOrEditUserPayload) -> (_AzleResult);
+  deleteLeave : (text) -> (_AzleResult_1);
+  getMyLeaveRequests : () -> (_AzleResult_2) query;
+  getMyLeaveRequestsByStatus : (text) -> (_AzleResult_2) query;
+  getUser : (principal) -> (_AzleResult) query;
+  getUsers : () -> (_AzleResult_3) query;
+  promoteUser : (PromoteUserPayload) -> (_AzleResult);
+  requestLeave : (LeavePayload) -> (_AzleResult_1);
+  updateLeave : (text, LeavePayload) -> (_AzleResult_1);
+  updateLeaveStatus : (text, text) -> (_AzleResult_1);
+  updateUser : (CreateOrEditUserPayload) -> (_AzleResult);
 }

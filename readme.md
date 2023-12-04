@@ -1,6 +1,8 @@
 # ooo-icp-canister
 
-> **OOO (Out Of Office) - is a simple platform for managing leaves of the employees.**
+> **OOO (Out Of Office) - is a simple self-hosted solution for managing leaves of the employees.**
+
+
 
 ## Setup
 
@@ -13,17 +15,17 @@
 
 ### Methods
 - **User**
-  - Add User - `addUser`
-  - Delete User - `deleteUser`
-  - Update User - `updateUser`
-  - Get User By ID - `getUser`
   - Get all Users - `getUsers`
+  - Get User By ID - `getUser`
+  - Add User (first user is the admin) - `createUser`
+  - Update User (update user profile - name, email) - `updateUser`
+  - Activate or Deactivate account or promote it as admin - `promoteUser`
 
 - **Leaves**
-  - Request Leave - `requestLeave`
-  - Update Leave - `updateLeave`
-  - Delete Leave - `deleteLeave`
-  - Update Leave Status - `updateLeaveStatus`
-  - Get all Leaves Request - `getLeaveRequest`
-  - Get Leaves Request By Status - `getLeaveRequestByStatus`
+  - Request leave - `requestLeave`
+  - Update leave period - `updateLeave`
+  - Update leave status - `updateLeaveStatus`
+  - Delete leave if it's still in status "PENDING" - `deleteLeave`
+  - Get leaves request By status - `getMyLeaveRequestsByStatus`
+  - Get all of my leaves request - `getMyLeaveRequests`
 
